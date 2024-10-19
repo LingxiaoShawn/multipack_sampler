@@ -112,7 +112,10 @@ def allocate(lengths: np.ndarray, lengths_cumsum: np.ndarray, rank: int, c: int,
             break  # Can't allocate each sequence to a single machine
             
         # here is basically the bin pack part: pack all elements into a SINGLE bin, for each processor n. 
-        # as we can see, this algorithm try to pack consecutive elements into a single bin, maybe not the best bin pack algorithm 
+        # as we can see, this algorithm try to pack consecutive elements into a single bin, maybe not the best bin pack algorithm.
+        # while when have multiple processors, the algorithm will the consecutive elements into n processors, 
+        # this is still not ideal as the bin packing algorithm's search space is too small. 
+        # that's also the reason why the sampler use this function will random permutation first, try to make sure that consecutives are randoms. 
         # TODO: think about other algorithm for single gpu case, such that the bin pack can be more effective. 
         batch = lpt_with_result(heap, lengths[start_index: start_index + l], n, start_index, rank) 
 
