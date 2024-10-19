@@ -91,11 +91,12 @@ def allocate(lengths: np.ndarray, lengths_cumsum: np.ndarray, rank: int, c: int,
 
     s = 0
     start_index = 0
+    num_tasks = len(lengths)
     result = []
 
     while True:
         # binary search [l, r)
-        l = 1
+        l = 1 # here we use 1 as we assume that a single element always has size less than c. 
         r = 1 + np.searchsorted(lengths_cumsum[start_index:], s + c * n, "right")
 
         # find the maximum m such that the consecutive tasks in lengths[start_index: start_index + m] can fit into n processors .
@@ -106,11 +107,7 @@ def allocate(lengths: np.ndarray, lengths_cumsum: np.ndarray, rank: int, c: int,
                 l = m
             else:
                 r = m
-
-        # use length l
-        if l < n:
-            break  # Can't allocate each sequence to a single machine
-            
+       
         # here is basically the bin pack part: pack all elements into a SINGLE bin, for each processor n. 
         # as we can see, this algorithm try to pack consecutive elements into a single bin, maybe not the best bin pack algorithm.
         # while when have multiple processors, the algorithm will the consecutive elements into n processors, 
@@ -123,7 +120,10 @@ def allocate(lengths: np.ndarray, lengths_cumsum: np.ndarray, rank: int, c: int,
         s = lengths_cumsum[start_index - 1]
 
         # add local rank
-        result.append(batch)
+        if batch: # sometime can be empty
+            result.append(batch)
+        if start_index >= num_tasks:
+            break 
 
     return result, s, len(result) * c * n
 
