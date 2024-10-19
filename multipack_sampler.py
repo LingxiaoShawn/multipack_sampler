@@ -11,16 +11,23 @@ import numba
 def lpt_check(heap: np.ndarray, A: np.ndarray, c: int, n: int):
     # LPT (Longest processing time first scheduling)
     # Time: O(|A| log |A| + |A| log n)
+    """ Determine whether it's possible to assign A to n processors such that processor exceeds a maximum capacity c.
+    heap size = n + 1, heap[0] is not used because the heap implementation is 1-indexed rather than 0-indexed. 
+    This is a common approach in implementing heaps for easier calculation of parent and child nodes.
+    **For single processor based bin packing. n=1, and this is just to find whether the sum of A can fit into the single bin.**
+    Hence, this function works the best for larger n otherwise it is just too simple. 
+    """
 
     A = np.sort(A)[::-1]
     heap.fill(0)
     for size in A:
         # Put into smallest element
-        heap[1] += size
-        if heap[1] > c:
+        heap[1] += size 
+        if heap[1] > c: 
+            # heap[1] is always the smallest element in the heap. this ensure that we are using all bins maximally. 
             return False
 
-        # Heapify (Sink)
+        # Heapify (Sink). This part is just used to maintain the heap architecture (order). 
         # https://stackoverflow.com/questions/20397674/replacing-element-in-min-heap
         u = 1
         while (u << 1) <= n:
@@ -91,6 +98,8 @@ def allocate(lengths: np.ndarray, lengths_cumsum: np.ndarray, rank: int, c: int,
         l = 1
         r = 1 + np.searchsorted(lengths_cumsum[start_index:], s + c * n, "right")
 
+        # find the maximum m such that the consecutive tasks in lengths[start_index: start_index + m] can fit into n processors .
+        # when n=1 for single process based case, each step is just to check whether sum of tasks less than c.  
         while r - l > 1:
             m = (l + r) // 2
             if lpt_check(heap, lengths[start_index: start_index + m], c, n):
@@ -101,8 +110,11 @@ def allocate(lengths: np.ndarray, lengths_cumsum: np.ndarray, rank: int, c: int,
         # use length l
         if l < n:
             break  # Can't allocate each sequence to a single machine
-
-        batch = lpt_with_result(heap, lengths[start_index: start_index + l], n, start_index, rank)
+            
+        # here is basically the bin pack part: pack all elements into a SINGLE bin, for each processor n. 
+        # as we can see, this algorithm try to pack consecutive elements into a single bin, maybe not the best bin pack algorithm 
+        # TODO: think about other algorithm for single gpu case, such that the bin pack can be more effective. 
+        batch = lpt_with_result(heap, lengths[start_index: start_index + l], n, start_index, rank) 
 
         start_index += l
         s = lengths_cumsum[start_index - 1]
